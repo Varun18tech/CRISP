@@ -2,6 +2,8 @@
 
 > **AI-Powered Continuous Cyber Risk Quantification & Investment Optimization Platform**
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FVarun18tech%2FCRISP&root-directory=frontend)
+
 Aegis-Quant translates raw technical cybersecurity signals (CVSS, CVEs, assets, threats, controls) into business-oriented financial metrics:
 - **Likelihood & Impact** (0–100 scale, weighted and configurable)
 - **Risk Exposure** (`Likelihood × Impact / 100`)
