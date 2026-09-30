@@ -349,9 +349,9 @@ export default function AIAdvisorPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-100">Amazon Bedrock · Claude 3.5 Sonnet</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-                      Claude 3.5 Sonnet
+                    <span className="text-xs font-bold text-slate-100">Executive Risk Intelligence Advisor</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                      Active Telemetry
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400">

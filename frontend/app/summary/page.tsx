@@ -127,31 +127,31 @@ export default function SummaryPage() {
 
   return (
     <PageShell
-      title="Executive Risk Summaries & Board Reports"
-      description="Natural language C-suite briefings and audit-ready Board reports synthesized by Amazon Bedrock (Claude 3.5 Sonnet)."
+      title="Executive Risk & Board Governance Summary"
+      description="Natural language C-suite briefings, audit-ready Board reports, and remediation portfolio allocations."
       onOpenStudio={() => setOpenStudio(true)}
     >
       <div className="space-y-6">
-        {/* Amazon Bedrock Model Status Banner */}
-        <div className="rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-slate-900/80 to-slate-900/90 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+        {/* Executive Decision Intelligence Banner */}
+        <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-950 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
           <div className="flex items-start sm:items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
-                  Amazon Bedrock · Claude 3.5 Sonnet
+                  Executive Decision Intelligence
                 </span>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                  Model: anthropic.claude-3-5-sonnet-20240620-v1:0
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-medium">
+                  Continuous Telemetry
                 </span>
               </div>
-              <p className="text-xs text-slate-300 mt-1">
+              <p className="text-xs text-slate-400 mt-1">
                 Natural language executive synthesis grounded in deterministic risk math, EAL liability, and portfolio capital optimization.
               </p>
             </div>
@@ -163,10 +163,10 @@ export default function SummaryPage() {
               size="sm"
               onClick={loadDataAndGenerate}
               disabled={generatingAI}
-              className="border-indigo-500/40 bg-indigo-950/20 text-indigo-200 hover:bg-indigo-900/30 text-xs"
+              className="border-blue-500/40 bg-blue-950/20 text-blue-200 hover:bg-blue-900/30 text-xs"
             >
               <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", generatingAI && "animate-spin")} />
-              {generatingAI ? "Synthesizing..." : "Regenerate with Bedrock"}
+              {generatingAI ? "Synthesizing..." : "Regenerate Report"}
             </Button>
             <Button
               variant="outline"
@@ -274,7 +274,7 @@ export default function SummaryPage() {
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-slate-100">No Company Risk Dataset Uploaded</h3>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  Upload your organization&apos;s risk records and security budget to generate natural language executive summaries and board reports via Amazon Bedrock (Claude 3.5 Sonnet).
+                  Upload your organization&apos;s risk records and security budget to generate natural language executive summaries and audit-ready governance reports.
                 </p>
               </div>
               <Button onClick={() => setOpenStudio(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-medium">
@@ -299,7 +299,7 @@ export default function SummaryPage() {
                       </CardTitle>
                     </div>
                     <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                      Amazon Bedrock · Claude 3.5
+                      CISO Decision Briefing
                     </span>
                   </div>
                 </CardHeader>
@@ -307,7 +307,7 @@ export default function SummaryPage() {
                   {generatingAI ? (
                     <div className="py-12 text-center space-y-3">
                       <RefreshCw className="w-8 h-8 text-blue-400 animate-spin mx-auto" />
-                      <p className="text-xs text-slate-300">Claude 3.5 Sonnet is synthesizing your executive risk briefing on Amazon Bedrock...</p>
+                      <p className="text-xs text-slate-300">Synthesizing executive cyber risk briefing from portfolio telemetry...</p>
                     </div>
                   ) : (
                     <FormattedChatMessage content={executiveSummary} />
@@ -338,7 +338,7 @@ export default function SummaryPage() {
                   {generatingAI ? (
                     <div className="py-12 text-center space-y-3">
                       <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin mx-auto" />
-                      <p className="text-xs text-slate-300">Claude 3.5 Sonnet is compiling formal Board Report on Amazon Bedrock...</p>
+                      <p className="text-xs text-slate-300">Compiling formal Board of Directors report from portfolio telemetry...</p>
                     </div>
                   ) : (
                     <FormattedChatMessage content={boardReport} />

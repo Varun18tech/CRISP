@@ -40,7 +40,7 @@ const navigation: NavSection[] = [
     title: "CRISP Workspace",
     items: [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { title: "Board Reports & Summary", href: "/summary", icon: BarChart3, badge: "Bedrock" },
+      { title: "Summary", href: "/summary", icon: BarChart3 },
     ],
   },
   {
