@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aegis-Quant — Technical Approach</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-canvas: #090D16;
+      --bg-card: rgba(17, 24, 39, 0.75);
+      --bg-card-highlight: rgba(30, 41, 59, 0.9);
+      --border-card: rgba(51, 65, 85, 0.6);
+      --border-highlight: rgba(56, 189, 248, 0.8);
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      --accent-cyan: #38BDF8;
+      --accent-blue: #3B82F6;
+      --accent-indigo: #6366F1;
+      --accent-emerald: #10B981;
+      --accent-amber: #F59E0B;
+      --accent-rose: #F43F5E;
+      --badge-bg: rgba(30, 41, 59, 0.8);
+      --badge-border: rgba(71, 85, 105, 0.6);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #030712;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      padding: 1rem;
+    }
+
+    /* 16:9 Presentation Slide Canvas */
+    .slide-container {
+      width: 100%;
+      max-width: 1720px;
+      aspect-ratio: 16 / 9;
+      background: radial-gradient(circle at 50% 0%, #172554 0%, #0B1120 45%, #050811 100%);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 40px rgba(56, 189, 248, 0.08);
+      border-radius: 20px;
+      padding: 2.2rem 2.8rem 1.8rem 2.8rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Subtle background grid lines for engineering aesthetic */
+    .slide-container::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* Top Controls for Presenter */
+    .controls-overlay {
+      position: absolute;
+      top: 1.2rem;
+      right: 2rem;
+      display: flex;
+      gap: 0.6rem;
+      z-index: 50;
+    }
+
+    .btn-ctrl {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #CBD5E1;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(8px);
+    }
+    .btn-ctrl:hover {
+      background: rgba(30, 41, 59, 0.9);
+      border-color: var(--accent-cyan);
+      color: #fff;
+    }
+
+    /* Header Section */
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.2rem;
+      position: relative;
+      z-index: 10;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .project-pill {
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: var(--accent-cyan);
+      font-size: 0.72rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+    }
+
+    .header-tagline {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    .slide-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(180deg, #FFFFFF 0%, #CBD5E1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.1;
+    }
+
+    .slide-subtitle {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      margin-top: 0.3rem;
+      font-weight: 400;
+    }
+
+    /* PIPELINE GRID (5 Major Stages) */
+    .pipeline-wrapper {
+      position: relative;
+      z-index: 10;
+      margin-bottom: 0.9rem;
+    }
+
+    .pipeline-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1.35fr auto 1fr auto 1fr;
+      align-items: stretch;
+      gap: 0;
+    }
+
+    /* Stage Connector Arrow */
+    .stage-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0 0.5rem;
+      color: rgba(56, 189, 248, 0.45);
+    }
+
+    .stage-connector svg {
+      width: 22px;
+      height: 22px;
+      filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.3));
+      animation: pulseArrow 2.5s infinite ease-in-out;
+    }
+
+    @keyframes pulseArrow {
+      0%, 100% { opacity: 0.45; transform: translateX(0); }
+      50% { opacity: 1; transform: translateX(3px); }
+    }
+
+    /* Pipeline Card */
+    .pipeline-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 1.15rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .pipeline-card:hover {
+      border-color: rgba(148, 163, 184, 0.5);
+      transform: translateY(-2px);
+    }
+
+    /* Highlighted Center Card: CORE ENGINE + AI */
+    .pipeline-card.highlight-card {
+      background: linear-gradient(180deg, rgba(23, 37, 84, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
+      border: 1.5px solid var(--border-highlight);
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.15), inset 0 0 15px rgba(56, 189, 248, 0.05);
+    }
+
+    .featured-ribbon {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(90deg, #0284C7, #2563EB);
+      color: #FFFFFF;
+      font-size: 0.65rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.15rem 0.65rem;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+    }
+
+    /* Card Elements */
+    .card-top {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .icon-box {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .icon-box.cyan {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .icon-box.blue {
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .icon-box.purple {
+      background: rgba(99, 102, 241, 0.18);
+      color: #818CF8;
+      border: 1px solid rgba(99, 102, 241, 0.4);
+    }
+    .icon-box.amber {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .icon-box.emerald {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .card-title-group {
+      overflow: hidden;
+    }
+
+    .stage-step-num {
+      font-size: 0.65rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-cyan);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    .card-desc {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      line-height: 1.35;
+      margin-bottom: 0.75rem;
+      font-weight: 400;
+    }
+
+    /* Core Dual Pillar Container for Stage 3 */
+    .dual-engine-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 0.7rem;
+    }
+
+    .sub-engine-row {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(71, 85, 105, 0.4);
+      border-radius: 6px;
+      padding: 0.35rem 0.55rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .sub-engine-row.ai-accent {
+      background: rgba(30, 58, 138, 0.3);
+      border: 1px solid rgba(96, 165, 250, 0.5);
+    }
+
+    .engine-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #F1F5F9;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .ai-tag {
+      background: linear-gradient(90deg, #2563EB, #7C3AED);
+      color: #FFF;
+      font-size: 0.58rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      letter-spacing: 0.03em;
+    }
+
+    .engine-detail {
+      font-size: 0.68rem;
+      color: #93C5FD;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Bullet details */
+    .card-items-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .card-items-list li {
+      font-size: 0.72rem;
+      color: #CBD5E1;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .card-items-list li::before {
+      content: "";
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      flex-shrink: 0;
+    }
+
+    /* Badges */
+    .tech-badges-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: auto;
+      padding-top: 0.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .tech-badge {
+      background: var(--badge-bg);
+      border: 1px solid var(--badge-border);
+      color: #E2E8F0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      font-weight: 500;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      letter-spacing: 0.02em;
+    }
+
+    .tech-badge.highlight {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    /* ARCHITECTURE LAYER (Thin horizontal layer) */
+    .arch-layer-box {
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(71, 85, 105, 0.45);
+      border-radius: 10px;
+      padding: 0.65rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      z-index: 10;
+      margin-bottom: 0.9rem;
+    }
+
+    .arch-label-col {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding-right: 1.2rem;
+      border-right: 1px solid rgba(71, 85, 105, 0.45);
+      flex-shrink: 0;
+    }
+
+    .arch-tag-title {
+      font-size: 0.72rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: #F8FAFC;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .arch-stack-flow {
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      flex-grow: 1;
+      padding-left: 1.2rem;
+    }
+
+    .stack-node {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.1rem;
+    }
+
+    .stack-layer-name {
+      font-size: 0.62rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-cyan);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stack-layer-tech {
+      font-size: 0.74rem;
+      color: #E2E8F0;
+      font-weight: 600;
+    }
+
+    .stack-chevron {
+      color: rgba(148, 163, 184, 0.4);
+      font-size: 0.8rem;
+      user-select: none;
+    }
+
+    /* BOTTOM OUTCOMES STRIP: "Why this approach?" */
+    .outcomes-strip {
+      background: linear-gradient(90deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 50%, rgba(15, 23, 42, 0.9) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 12px;
+      padding: 0.75rem 1.4rem;
+      display: grid;
+      grid-template-columns: 200px 1fr 1fr 1fr;
+      align-items: center;
+      gap: 1.2rem;
+      position: relative;
+      z-index: 10;
+    }
+
+    .strip-headline {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid rgba(71, 85, 105, 0.4);
+      padding-right: 1rem;
+    }
+
+    .strip-badge {
+      font-size: 0.62rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-cyan);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .strip-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: -0.01em;
+    }
+
+    .outcome-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+    }
+
+    .outcome-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .outcome-dot.dot-cyan {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+    .outcome-dot.dot-purple {
+      background: rgba(99, 102, 241, 0.18);
+      color: #A5B4FC;
+      border: 1px solid rgba(99, 102, 241, 0.4);
+    }
+    .outcome-dot.dot-emerald {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .outcome-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+
+    .outcome-name {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #F8FAFC;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .outcome-desc {
+      font-size: 0.71rem;
+      color: var(--text-secondary);
+      line-height: 1.25;
+    }
+
+    /* Print / High Resolution Optimization */
+    @media print {
+      body {
+        padding: 0;
+        background: #000;
+      }
+      .controls-overlay {
+        display: none !important;
+      }
+      .slide-container {
+        border: none;
+        max-width: 100%;
+        box-shadow: none;
+        border-radius: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 16:9 Presentation Canvas -->
+  <div class="slide-container" id="presentationSlide">
+    
+    <!-- Top Interactive Presentation Controls -->
+    <div class="controls-overlay">
+      <button class="btn-ctrl" onclick="toggleFullScreen()" title="Present Full Screen">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        Full Screen [F]
+      </button>
+      <button class="btn-ctrl" onclick="window.print()" title="Export or Print as PDF">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Export PDF
+      </button>
+    </div>
+
+    <!-- Slide Header -->
+    <header class="slide-header">
+      <div>
+        <div class="header-meta">
+          <span class="project-pill">Aegis-Quant</span>
+          <span class="header-tagline">Continuous Cyber Risk Quantification & Capital Optimization</span>
+        </div>
+        <h1 class="slide-title">Technical Approach</h1>
+        <p class="slide-subtitle">End-to-end pipeline: Ingesting security telemetry, deterministic financial risk modeling, and GenAI explainability.</p>
+      </div>
+    </header>
+
+    <!-- 5-Stage Left-to-Right Technical Pipeline -->
+    <div class="pipeline-wrapper">
+      <div class="pipeline-grid">
+
+        <!-- STAGE 1: INPUT / DATA SOURCES -->
+        <div class="pipeline-card">
+          <div>
+            <div class="card-top">
+              <div class="icon-box cyan">
+                <!-- Database/Input Icon -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              </div>
+              <div class="card-title-group">
+                <div class="stage-step-num">Stage 01</div>
+                <div class="card-title">Security Telemetry</div>
+              </div>
+            </div>
+            <div class="card-desc">Heterogeneous raw security signals & asset context</div>
+            <ul class="card-items-list">
+              <li>CVEs & CVSS v3.1 Scores (NVD / MITRE)</li>
+              <li>Threat Actor Activity & Exploit PoCs</li>
+              <li>IT / OT Asset Criticality & Exposure</li>
+              <li>Security Controls (EDR, WAF, MFA)</li>
+              <li>Business Financial & Revenue Drivers</li>
+            </ul>
+          </div>
+          <div class="tech-badges-row">
+            <span class="tech-badge">REST APIs</span>
+            <span class="tech-badge">JSON Feeds</span>
+            <span class="tech-badge">Postgres</span>
+          </div>
+        </div>
+
+        <!-- Connector 1 -> 2 -->
+        <div class="stage-connector">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+
+        <!-- STAGE 2: INGESTION & PREPROCESSING -->
+        <div class="pipeline-card">
+          <div>
+            <div class="card-top">
+              <div class="icon-box blue">
+                <!-- Filter/Preprocess Icon -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              </div>
+              <div class="card-title-group">
+                <div class="stage-step-num">Stage 02</div>
+                <div class="card-title">Ingestion & Validation</div>
+              </div>
+            </div>
+            <div class="card-desc">Type-safe normalization onto unified 0–100 scale</div>
+            <ul class="card-items-list">
+              <li>Strict Pydantic v2 Schema Validation</li>
+              <li>Missing Value & Outlier Imputation</li>
+              <li>Normalized Dimension Scaling (0–100)</li>
+              <li>Control Coverage (Cov) & Efficacy (Eff)</li>
+              <li>Sub-second Async ETL Pipelines</li>
+            </ul>
+          </div>
+          <div class="tech-badges-row">
+            <span class="tech-badge highlight">Pydantic v2</span>
+            <span class="tech-badge">FastAPI</span>
+            <span class="tech-badge">SQLAlchemy</span>
+          </div>
+        </div>
+
+        <!-- Connector 2 -> 3 -->
+        <div class="stage-connector">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+
+        <!-- STAGE 3: CORE PROCESSING / AI (VISUALLY PROMINENT) -->
+        <div class="pipeline-card highlight-card">
+          <div class="featured-ribbon">Core Engine & Generative AI</div>
+          <div>
+            <div class="card-top">
+              <div class="icon-box purple">
+                <!-- Cpu / Neural / Math Icon -->
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3m6-3v3m-6 17v3m6-3v3M1 9h3m-3 6h3m17-6h3m-3 6h3"/></svg>
+              </div>
+              <div class="card-title-group">
+                <div class="stage-step-num">Stage 03 • Core</div>
+                <div class="card-title">Deterministic Math + AI</div>
+              </div>
+            </div>
+            <div class="card-desc">Hybrid engine: unalterable mathematical rigor paired with LLM context</div>
+
+            <!-- Dual Architecture Box -->
+            <div class="dual-engine-box">
+              <div class="sub-engine-row">
+                <span class="engine-label">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15z"/></svg>
+                  Deterministic Quant Engine
+                </span>
+                <span class="engine-detail">Likelihood × Impact</span>
+              </div>
+              <div class="sub-engine-row ai-accent">
+                <span class="engine-label">
+                  <span class="ai-tag">AI Layer</span>
+                  Pluggable AIProvider
+                </span>
+                <span class="engine-detail">Narrative Synthesis</span>
+              </div>
+            </div>
+
+            <ul class="card-items-list">
+              <li>Likelihood: <code>0.30E + 0.25T + 0.20X + 0.15V + 0.10H</code></li>
+              <li>Residual Risk: <code>Inherent × (1 - [Eff × Cov / 100])</code></li>
+              <li>AI Risk Drivers & Root-Cause Explanations</li>
+            </ul>
+          </div>
+          <div class="tech-badges-row">
+            <span class="tech-badge highlight">Gemini / Claude</span>
+            <span class="tech-badge highlight">Deterministic Python</span>
+            <span class="tech-badge">FAIR Framework</span>
+          </div>
+        </div>
+
+        <!-- Connector 3 -> 4 -->
+        <div class="stage-connector">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+
+        <!-- STAGE 4: ANALYSIS / DECISION LOGIC -->
+        <div class="pipeline-card">
+          <div>
+            <div class="card-top">
+              <div class="icon-box amber">
+                <!-- Scale / Decision Logic Icon -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8l-8 8m0-8l8 8"/></svg>
+              </div>
+              <div class="card-title-group">
+                <div class="stage-step-num">Stage 04</div>
+                <div class="card-title">Financial Prioritization</div>
+              </div>
+            </div>
+            <div class="card-desc">Translates risk into financial loss and optimal spend</div>
+            <ul class="card-items-list">
+              <li>Expected Annual Loss: <code>EAL = Freq × Loss</code></li>
+              <li>5-Tier Risk Classification (Low to Critical)</li>
+              <li>Capital Optimization (Knapsack & ROSI)</li>
+              <li>Security Control Gap Cost/Benefit Modeling</li>
+              <li>What-If Mitigation Scenario Simulation</li>
+            </ul>
+          </div>
+          <div class="tech-badges-row">
+            <span class="tech-badge">EAL Modeling</span>
+            <span class="tech-badge">ROSI Analytics</span>
+            <span class="tech-badge">INR / USD Support</span>
+          </div>
+        </div>
+
+        <!-- Connector 4 -> 5 -->
+        <div class="stage-connector">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+
+        <!-- STAGE 5: OUTPUT / ACTION -->
+        <div class="pipeline-card">
+          <div>
+            <div class="card-top">
+              <div class="icon-box emerald">
+                <!-- Output / Display / Check Icon -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </div>
+              <div class="card-title-group">
+                <div class="stage-step-num">Stage 05</div>
+                <div class="card-title">Executive Action Delivery</div>
+              </div>
+            </div>
+            <div class="card-desc">Audit-ready intelligence for technical & executive leaders</div>
+            <ul class="card-items-list">
+              <li>Executive Dashboard with Exposure Meters</li>
+              <li>Ranked Remediation Queues (72h SLA vs 14d)</li>
+              <li>Capital Allocation & Budget Justifications</li>
+              <li>Conversational Risk Copilot & Natural QA</li>
+              <li>Exportable Board Reports & Compliance Logs</li>
+            </ul>
+          </div>
+          <div class="tech-badges-row">
+            <span class="tech-badge highlight">Next.js 16</span>
+            <span class="tech-badge">React 19</span>
+            <span class="tech-badge">Recharts</span>
+            <span class="tech-badge">Lucide</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- HORIZONTAL ARCHITECTURE LAYER (Thin horizontal layer) -->
+    <div class="arch-layer-box">
+      <div class="arch-label-col">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        <span class="arch-tag-title">Full Technology Stack</span>
+      </div>
+
+      <div class="arch-stack-flow">
+        <div class="stack-node">
+          <span class="stack-layer-name">Frontend</span>
+          <span class="stack-layer-tech">Next.js 16 / React 19 / TailwindCSS</span>
+        </div>
+        <span class="stack-chevron">→</span>
+
+        <div class="stack-node">
+          <span class="stack-layer-name">Backend / API</span>
+          <span class="stack-layer-tech">FastAPI / Python 3.11 / Pydantic v2</span>
+        </div>
+        <span class="stack-chevron">→</span>
+
+        <div class="stack-node">
+          <span class="stack-layer-name">Core & AI/ML</span>
+          <span class="stack-layer-tech">FAIR Math Engine / Pluggable AIProvider</span>
+        </div>
+        <span class="stack-chevron">→</span>
+
+        <div class="stack-node">
+          <span class="stack-layer-name">Database</span>
+          <span class="stack-layer-tech">PostgreSQL (Supabase) / SQLAlchemy ORM</span>
+        </div>
+        <span class="stack-chevron">→</span>
+
+        <div class="stack-node">
+          <span class="stack-layer-name">Infrastructure</span>
+          <span class="stack-layer-tech">Docker / Uvicorn ASGI / Node.js</span>
+        </div>
+        <span class="stack-chevron">→</span>
+
+        <div class="stack-node">
+          <span class="stack-layer-name">Security & Audit</span>
+          <span class="stack-layer-tech">Deterministic Non-Tamper Core / Strict RBAC</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPACT "WHY THIS APPROACH?" STRIP (3 OUTCOMES) -->
+    <div class="outcomes-strip">
+      <div class="strip-headline">
+        <span class="strip-badge">Architectural Value</span>
+        <span class="strip-title">Why this approach?</span>
+      </div>
+
+      <!-- Outcome 1: Real-Time -->
+      <div class="outcome-item">
+        <div class="outcome-dot dot-cyan">01</div>
+        <div class="outcome-text">
+          <div class="outcome-name">
+            Real-Time
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div class="outcome-desc">Replaces obsolete annual risk spreadsheets with continuous, sub-second telemetry ingestion.</div>
+        </div>
+      </div>
+
+      <!-- Outcome 2: Intelligent -->
+      <div class="outcome-item">
+        <div class="outcome-dot dot-purple">02</div>
+        <div class="outcome-text">
+          <div class="outcome-name">
+            Intelligent
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+          </div>
+          <div class="outcome-desc">Combines auditable deterministic formulas with GenAI explanations that non-technical boards understand.</div>
+        </div>
+      </div>
+
+      <!-- Outcome 3: Actionable -->
+      <div class="outcome-item">
+        <div class="outcome-dot dot-emerald">03</div>
+        <div class="outcome-text">
+          <div class="outcome-name">
+            Actionable
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="outcome-desc">Quantifies risk directly into currency (EAL in ₹/$) to maximize financial ROI on every security rupee spent.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function toggleFullScreen() {
+      const container = document.getElementById('presentationSlide');
+      if (!document.fullscreenElement) {
+        if (container.requestFullscreen) {
+          container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) {
+          container.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'f' || e.key === 'F') {
+        toggleFullScreen();
+      }
+    });
+  </script>
+</body>
+</html>

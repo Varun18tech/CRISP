@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.npm-cache/
+.pnp
+.pnp.js
+.venv/
+env/
+venv/
+ENV/
+
+# Testing
+coverage/
+*.lcov
+.pytest_cache/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# SQLite / Local DB
+*.db
+*.sqlite3
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
