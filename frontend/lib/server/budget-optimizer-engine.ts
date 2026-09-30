@@ -59,6 +59,11 @@ export function getServerUploadedSnapshot() {
   return globalForOptimizer.crispLatestSnapshot || null;
 }
 
+export function clearServerUploadedSnapshot() {
+  globalForOptimizer.crispLatestSnapshot = null;
+  clearServerOptimizerCache();
+}
+
 function safeFloat(value: any): number | null {
   if (value === null || value === undefined || typeof value === "boolean") {
     return null;

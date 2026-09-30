@@ -44,6 +44,13 @@ export default function SummaryPage() {
     setLoading(true);
     try {
       const data = (await api.getLatestDatasetAnalysis()) as any;
+      if (!data || !data.valid_records || data.valid_records.length === 0) {
+        setAnalysis(null);
+        setExecutiveSummary("");
+        setBoardReport("");
+        setLoading(false);
+        return;
+      }
       setAnalysis(data);
 
       const validRecords = data?.valid_records || [];
@@ -52,13 +59,13 @@ export default function SummaryPage() {
 
       const contextPayload = {
         company_name: firstRec.company_name || data?.company_name || "Enterprise Organization",
-        total_risks: validRecords.length || 6,
-        critical_count: validRecords.filter((r: any) => (r.severity || r.risk_level) === "Critical").length || 2,
-        high_count: validRecords.filter((r: any) => (r.severity || r.risk_level) === "High").length || 3,
-        total_eal: opt.total_current_risk ? opt.total_current_risk * 100000 : 36950000,
-        available_budget: opt.available_budget || data?.dataset_budget || 1000000,
-        allocated_budget: opt.recommended_investment || opt.allocated_budget || 1000000,
-        risk_reduction_pct: opt.overall_risk_reduction_percent || 68.5,
+        total_risks: validRecords.length,
+        critical_count: validRecords.filter((r: any) => (r.severity || r.risk_level) === "Critical").length,
+        high_count: validRecords.filter((r: any) => (r.severity || r.risk_level) === "High").length,
+        total_eal: opt.total_current_risk ? opt.total_current_risk * 100000 : 0,
+        available_budget: opt.available_budget || data?.dataset_budget || 0,
+        allocated_budget: opt.recommended_investment || opt.allocated_budget || 0,
+        risk_reduction_pct: opt.overall_risk_reduction_percent || 0,
         currency: firstRec.currency || data?.dataset_currency || "INR",
         top_risks: (opt.selected_risks || validRecords).slice(0, 5),
       };
@@ -81,6 +88,24 @@ export default function SummaryPage() {
 
   useEffect(() => {
     loadDataAndGenerate();
+
+    const handleReset = () => {
+      setAnalysis(null);
+      setExecutiveSummary("");
+      setBoardReport("");
+      setLoading(false);
+    };
+
+    const handleUpload = () => {
+      loadDataAndGenerate();
+    };
+
+    window.addEventListener("crisp_data_reset", handleReset);
+    window.addEventListener("crisp_dataset_uploaded", handleUpload);
+    return () => {
+      window.removeEventListener("crisp_data_reset", handleReset);
+      window.removeEventListener("crisp_dataset_uploaded", handleUpload);
+    };
   }, []);
 
   const result = analysis?.optimization;

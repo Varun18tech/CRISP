@@ -201,3 +201,16 @@ def latest_dataset_analysis(db: Session = Depends(get_db)):
     if not snapshot:
         return {"status": "no_data", "message": "Upload a company dataset to begin CRISP analysis."}
     return {"status": snapshot.status, "snapshot_id": snapshot.id, "created_at": snapshot.created_at, **snapshot.result}
+
+
+@router.post("/reset")
+def reset_portfolio_data(db: Session = Depends(get_db)):
+    """Reset all uploaded dataset records, snapshots, and portfolio metrics to zero."""
+    db.query(AnalysisSnapshot).delete()
+    db.commit()
+    clear_optimizer_cache()
+    return {
+        "status": "ok",
+        "message": "All uploaded dataset records and portfolio metrics have been reset to zero.",
+    }
+

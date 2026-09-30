@@ -42,6 +42,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
       "Upload company data first, then ask about the resulting risks or allocation.",
     timestamp: "Just now",
     suggestions: [
+      "refresh",
       "What is our total organizational EAL liability?",
       "Which risk is currently ranked #1 and why?",
       "If we spend ₹800,000 on WAF, what is our projected ROSI?",
@@ -99,6 +100,58 @@ export function AIChatBotWidget() {
     setMessages(newHistory);
     setInput("");
     setIsLoading(true);
+
+    const lowerQuery = query.toLowerCase().trim();
+    if (
+      lowerQuery === "refresh" ||
+      lowerQuery === "/refresh" ||
+      lowerQuery === "reset" ||
+      lowerQuery === "/reset" ||
+      lowerQuery === "refresh data" ||
+      lowerQuery === "clear data"
+    ) {
+      try {
+        await api.resetPlatformData();
+      } catch (err) {
+        console.error("Reset API failed:", err);
+      }
+
+      try {
+        localStorage.removeItem("crisp_budget_optimizer_state_v1");
+        localStorage.removeItem("crisp_dataset_snapshot");
+        localStorage.removeItem("crisp_active_analysis");
+      } catch {}
+
+      // Broadcast global reset event to update all pages (Dashboard, Risks, Assets, Vulns, Optimizer, Summary)
+      window.dispatchEvent(new CustomEvent("crisp_data_reset"));
+      window.dispatchEvent(new CustomEvent("crisp_budget_optimizer_updated", { detail: null }));
+      window.dispatchEvent(new Event("storage"));
+
+      const resetMessage: ChatMessage = {
+        id: `ai_${Date.now()}`,
+        role: "assistant",
+        content:
+          "### 🔄 Platform Reset Complete\n\n" +
+          "All uploaded datasets, risk metrics, assets, vulnerabilities, and budget allocations have been **reset to zero (0)**.\n\n" +
+          "- **Active Risks**: 0\n" +
+          "- **Monitored Assets**: 0\n" +
+          "- **Vulnerabilities**: 0\n" +
+          "- **Available Budget**: ₹0\n" +
+          "- **Allocated Spend**: ₹0\n" +
+          "- **Risk Reduction**: 0%\n\n" +
+          "The platform is now in a clean state. You can now click **ADD DATA** or **Upload Company Dataset** to upload fresh data!",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        suggestions: [
+          "Upload company dataset",
+          "What is our current risk count?",
+        ],
+        citations: ["CRISP Platform State Manager", "System Reset Engine"],
+      };
+
+      setMessages((prev) => [...prev, resetMessage]);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const response = await api.chatWithAI(

@@ -41,9 +41,7 @@ export default function AssetsPage() {
     api.getLatestDatasetAnalysis().then((data: any) => {
       setAnalysis(data);
       if (!data || !Array.isArray(data.valid_records) || data.valid_records.length === 0) {
-        api.getAssets().then((demo: any) => {
-          if (Array.isArray(demo)) setBaselineAssets(demo);
-        });
+        setBaselineAssets([]);
       }
     });
   };
@@ -51,10 +49,19 @@ export default function AssetsPage() {
   useEffect(() => {
     load();
     const handleOptimizerUpdate = () => load();
+    const handleReset = () => {
+      setAnalysis(null);
+      setBaselineAssets([]);
+      load();
+    };
     window.addEventListener("crisp_budget_optimizer_updated", handleOptimizerUpdate);
+    window.addEventListener("crisp_dataset_uploaded", handleOptimizerUpdate);
+    window.addEventListener("crisp_data_reset", handleReset);
     window.addEventListener("storage", handleOptimizerUpdate);
     return () => {
       window.removeEventListener("crisp_budget_optimizer_updated", handleOptimizerUpdate);
+      window.removeEventListener("crisp_dataset_uploaded", handleOptimizerUpdate);
+      window.removeEventListener("crisp_data_reset", handleReset);
       window.removeEventListener("storage", handleOptimizerUpdate);
     };
   }, []);

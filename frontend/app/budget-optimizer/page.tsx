@@ -355,6 +355,16 @@ export default function BudgetOptimizerPage() {
   // Hydrate saved optimizer state from localStorage on initial mount
   useEffect(() => {
     try {
+      const activeAnalysis = localStorage.getItem("crisp_active_analysis");
+      if (!activeAnalysis) {
+        localStorage.removeItem(STORAGE_KEY);
+        setResult(null);
+        setBudgetInputRaw("");
+        return;
+      }
+    } catch {}
+
+    try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -396,6 +406,9 @@ export default function BudgetOptimizerPage() {
         if (ctx.dataset_budget !== null && ctx.dataset_budget !== undefined) {
           setBudgetInputRaw((prev) => (prev.trim() === "" ? String(ctx.dataset_budget) : prev));
         }
+      } else {
+        setResult(null);
+        setBudgetInputRaw("");
       }
     } catch (err: any) {
       setContextError(err?.message || "Unable to connect to CRISP backend optimization service.");
@@ -406,6 +419,31 @@ export default function BudgetOptimizerPage() {
 
   useEffect(() => {
     fetchContext();
+  }, [fetchContext]);
+
+  // Listen for platform reset (from CRISP Companion 'refresh' command) and dataset upload
+  useEffect(() => {
+    const handleReset = () => {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {}
+      setResult(null);
+      setBudgetInputRaw("");
+      setValidationError(null);
+      setOptimizationError(null);
+      fetchContext();
+    };
+
+    const handleUpload = () => {
+      fetchContext();
+    };
+
+    window.addEventListener("crisp_data_reset", handleReset);
+    window.addEventListener("crisp_dataset_uploaded", handleUpload);
+    return () => {
+      window.removeEventListener("crisp_data_reset", handleReset);
+      window.removeEventListener("crisp_dataset_uploaded", handleUpload);
+    };
   }, [fetchContext]);
 
   // Execute authoritative backend optimization and persist result

@@ -110,10 +110,18 @@ export default function DashboardPage() {
   useEffect(() => {
     load();
     const handleUpdate = () => load();
+    const handleReset = () => {
+      setAnalysis(null);
+      load();
+    };
     window.addEventListener("crisp_budget_optimizer_updated", handleUpdate);
+    window.addEventListener("crisp_dataset_uploaded", handleUpdate);
+    window.addEventListener("crisp_data_reset", handleReset);
     window.addEventListener("storage", handleUpdate);
     return () => {
       window.removeEventListener("crisp_budget_optimizer_updated", handleUpdate);
+      window.removeEventListener("crisp_dataset_uploaded", handleUpdate);
+      window.removeEventListener("crisp_data_reset", handleReset);
       window.removeEventListener("storage", handleUpdate);
     };
   }, []);
@@ -226,12 +234,12 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Total Current Risk"
-          value={result ? result.total_current_risk : "—"}
+          value={result ? result.total_current_risk : 0}
           subtitle="Portfolio risk before remediation"
           change={
             result
               ? `${reductionVal > 0 ? reductionVal.toFixed(2) : "0.00"} modeled reduction`
-              : "Awaiting company dataset"
+              : "0.00 modeled reduction"
           }
           isPositive={true}
           icon={ShieldAlert}
@@ -239,18 +247,18 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Modeled Risk Reduction"
-          value={result ? `${result.overall_risk_reduction_percent}%` : "—"}
+          value={result ? `${result.overall_risk_reduction_percent}%` : "0%"}
           subtitle="After selected remediation"
-          change={result ? "Budget-constrained recommendation" : "Calculated after upload"}
+          change={result ? "Budget-constrained recommendation" : "Awaiting data"}
           isPositive={true}
           icon={TrendingDown}
           variant="success"
         />
         <StatCard
           title="Recommended Investment"
-          value={result ? money(recInvestment) : "—"}
+          value={result ? money(recInvestment) : money(0)}
           subtitle="Remediation spend selected"
-          change={result && availBudget > 0 ? `${budgetUse}% of available budget` : "No budget supplied"}
+          change={result && availBudget > 0 ? `${budgetUse}% of available budget` : "0% of available budget"}
           isPositive={true}
           icon={Coins}
           variant="accent"
@@ -260,31 +268,31 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <AllocationCard
           label="Available Budget"
-          value={result || analysis?.dataset_budget ? money(availBudget) : "—"}
+          value={result || analysis?.dataset_budget ? money(availBudget) : money(0)}
           detail="From uploaded dataset"
           tone="blue"
         />
         <AllocationCard
           label="Allocated to Remediation"
-          value={result ? money(recInvestment) : "—"}
+          value={result ? money(recInvestment) : money(0)}
           detail={`${selected.length} selected risk${selected.length === 1 ? "" : "s"}`}
           tone="cyan"
         />
         <AllocationCard
           label="Remaining Budget"
-          value={result ? money(result.remaining_budget) : "—"}
+          value={result ? money(result.remaining_budget) : money(0)}
           detail="Unallocated after recommendation"
           tone="emerald"
         />
         <AllocationCard
           label="Largest Risk Allocation"
-          value={result ? money(highestAllocation) : "—"}
+          value={result ? money(highestAllocation) : money(0)}
           detail="Highest selected remediation cost"
           tone="violet"
         />
         <AllocationCard
           label="Deferred Risks"
-          value={result ? deferred.length : "—"}
+          value={result ? deferred.length : 0}
           detail="Outside the budget-feasible portfolio"
           tone="amber"
         />

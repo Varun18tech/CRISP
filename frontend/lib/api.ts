@@ -198,5 +198,14 @@ export const api = {
         body: JSON.stringify(context || {}),
       }
     ),
+
+  resetPlatformData: () =>
+    fetchWithFallback<{ status: string; message?: string }>(
+      "/portfolio/reset",
+      { status: "ok", message: "All data reset to zero." },
+      {
+        method: "POST",
+      }
+    ),
 };
 

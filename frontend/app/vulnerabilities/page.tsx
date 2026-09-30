@@ -44,9 +44,7 @@ export default function VulnerabilitiesPage() {
     api.getLatestDatasetAnalysis().then((data: any) => {
       setAnalysis(data);
       if (!data || !Array.isArray(data.valid_records) || data.valid_records.length === 0) {
-        api.getVulnerabilities().then((demo: any) => {
-          if (Array.isArray(demo)) setBaselineVulns(demo);
-        });
+        setBaselineVulns([]);
       }
     });
   };
@@ -54,10 +52,19 @@ export default function VulnerabilitiesPage() {
   useEffect(() => {
     load();
     const handleOptimizerUpdate = () => load();
+    const handleReset = () => {
+      setAnalysis(null);
+      setBaselineVulns([]);
+      load();
+    };
     window.addEventListener("crisp_budget_optimizer_updated", handleOptimizerUpdate);
+    window.addEventListener("crisp_dataset_uploaded", handleOptimizerUpdate);
+    window.addEventListener("crisp_data_reset", handleReset);
     window.addEventListener("storage", handleOptimizerUpdate);
     return () => {
       window.removeEventListener("crisp_budget_optimizer_updated", handleOptimizerUpdate);
+      window.removeEventListener("crisp_dataset_uploaded", handleOptimizerUpdate);
+      window.removeEventListener("crisp_data_reset", handleReset);
       window.removeEventListener("storage", handleOptimizerUpdate);
     };
   }, []);
