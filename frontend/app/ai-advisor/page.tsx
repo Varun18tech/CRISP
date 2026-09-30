@@ -39,6 +39,16 @@ interface ChatMessage {
 
 const PROMPT_LIBRARY = [
   {
+    category: "Executive & Board Reports",
+    icon: Sparkles,
+    color: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+    prompts: [
+      "Generate an Executive Risk Summary using Claude 3.5 Sonnet",
+      "Draft a formal Board of Directors Cyber Risk Report",
+      "Explain the Budget Optimizer allocation rationale for the Audit Committee",
+    ],
+  },
+  {
     category: "Capital Allocation & ROSI",
     icon: DollarSign,
     color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
@@ -288,9 +298,9 @@ export default function AIAdvisorPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-100">Aegis-Quant Cognitive Co-Pilot</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                      Zero Hallucination
+                    <span className="text-xs font-bold text-slate-100">Amazon Bedrock · Claude 3.5 Sonnet</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                      Claude 3.5 Sonnet
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400">

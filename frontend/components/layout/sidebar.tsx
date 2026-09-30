@@ -40,7 +40,7 @@ const navigation: NavSection[] = [
     title: "CRISP Workspace",
     items: [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { title: "Summary", href: "/summary", icon: BarChart3 },
+      { title: "Board Reports & Summary", href: "/summary", icon: BarChart3, badge: "Bedrock" },
     ],
   },
   {
@@ -55,6 +55,7 @@ const navigation: NavSection[] = [
     title: "Decision Support",
     items: [
       { title: "Budget Optimizer", href: "/budget-optimizer", icon: Calculator },
+      { title: "Executive AI Advisor", href: "/ai-advisor", icon: Sparkles, badge: "Claude 3.5" },
       { title: "Investments", href: "/investments", icon: DollarSign },
       { title: "Data Quality", href: "/data-quality", icon: ClipboardCheck },
     ],

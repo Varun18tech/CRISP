@@ -17,10 +17,15 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
     DATABASE_URL: str = "sqlite:///./aegis_quant.db"
     
-    # AI Engine
-    AI_PROVIDER: str = "mock"
+    # AI Engine & Amazon Bedrock (Claude 3.5 Sonnet)
+    AI_PROVIDER: str = "bedrock"
     AI_API_KEY: Optional[str] = None
-    AI_MODEL: str = "mock-v1"
+    AI_MODEL: str = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+    BEDROCK_MODEL_ID: str = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+    AWS_REGION: str = "us-east-1"
+    AWS_ACCESS_KEY_ID: Optional[str] = None
+    AWS_SECRET_ACCESS_KEY: Optional[str] = None
+    AWS_SESSION_TOKEN: Optional[str] = None
     
     # Risk Engine Configuration Defaults
     DEFAULT_CURRENCY: str = "INR"

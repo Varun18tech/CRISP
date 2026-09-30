@@ -142,16 +142,61 @@ export const api = {
   chatWithAI: (messages: { role: string; content: string }[], context?: any) =>
     fetchWithFallback("/ai/chat", {
       role: "assistant",
-      content: "Hello! I am Aegis-Quant AI, your cyber risk intelligence and capital quantification advisor. Our deterministic quantification engine monitors 6 active enterprise risks with a total residual EAL of ₹36,950,000.",
+      content: "Hello! I am Aegis-Quant AI powered by Amazon Bedrock (Claude 3.5 Sonnet), your cyber risk intelligence and capital quantification advisor.",
       suggestions: [
+        "Generate a formal Board Report from our dataset",
         "What is our total organizational EAL liability?",
         "Which risk is currently ranked #1 and why?",
         "If we spend ₹800,000 on WAF, what is our projected ROSI?",
-        "Explain how Likelihood & Residual Risk are calculated",
       ],
-      citations: ["Aegis Deterministic Risk Model v1.0", "ISO/IEC 27005", "NIST SP 800-30"],
+      citations: ["Amazon Bedrock (Claude 3.5 Sonnet)", "ISO/IEC 27005", "NIST SP 800-30"],
     }, {
       method: "POST",
       body: JSON.stringify({ messages, context }),
     }),
+
+  getAIStatus: () =>
+    fetchWithFallback("/ai/status", {
+      status: "online",
+      provider: "Amazon Bedrock",
+      model: "anthropic.claude-3-5-sonnet-20240620-v1:0",
+      model_name: "Claude 3.5 Sonnet",
+      capabilities: [
+        "Executive Cyber Risk Summaries",
+        "Board of Directors Reports",
+        "Risk Explainability",
+        "Interactive Executive Intelligence",
+      ],
+    }),
+
+  generateExecutiveSummary: (context?: any) =>
+    fetchWithFallback<{ model: string; provider: string; summary: string; status: string }>(
+      "/ai/executive-summary",
+      {
+        model: "Amazon Bedrock (Claude 3.5 Sonnet)",
+        provider: "Amazon Bedrock",
+        summary: "### 🛡️ Executive Cyber Risk Briefing\n\nExecutive cyber posture evaluated from active risk register and budget constraints.",
+        status: "synthesized",
+      },
+      {
+        method: "POST",
+        body: JSON.stringify(context || {}),
+      }
+    ),
+
+  generateBoardReport: (context?: any) =>
+    fetchWithFallback<{ model: string; provider: string; report: string; status: string }>(
+      "/ai/board-report",
+      {
+        model: "Amazon Bedrock (Claude 3.5 Sonnet)",
+        provider: "Amazon Bedrock",
+        report: "# 🏛️ Board of Directors Cyber Risk & Capital Allocation Report\n\nComprehensive board briefing.",
+        status: "synthesized",
+      },
+      {
+        method: "POST",
+        body: JSON.stringify(context || {}),
+      }
+    ),
 };
+
