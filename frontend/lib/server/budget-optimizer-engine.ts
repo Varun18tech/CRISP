@@ -638,7 +638,14 @@ function solveOptimalPortfolio(eligibleRisks: any[], budgetInr: number): any[] {
   });
 }
 
-export function loadCrispRisksFromServer(): [Record<string, any>[], string] {
+export interface ServerDatasetMeta {
+  hasUploadedDataset: boolean;
+  datasetBudget: number | null;
+  datasetCurrency: string;
+  companyName: string | null;
+}
+
+export function loadCrispRisksFromServer(): [Record<string, any>[], string, ServerDatasetMeta] {
   const snapshot = getServerUploadedSnapshot();
   if (
     snapshot &&
@@ -646,120 +653,45 @@ export function loadCrispRisksFromServer(): [Record<string, any>[], string] {
     Array.isArray(snapshot.result.valid_records) &&
     snapshot.result.valid_records.length > 0
   ) {
-    const enriched = snapshot.result.valid_records.map((r: any) => ({
+    const valid = snapshot.result.valid_records;
+    const enriched = valid.map((r: any) => ({
       ...r,
       source_type: `Uploaded Dataset (${(snapshot.source_files || ["dataset"]).join(", ")})`,
     }));
-    return [enriched, `Uploaded Dataset Snapshot #${snapshot.id}`];
+
+    const firstRec = valid[0] || {};
+    const rawBudget =
+      firstRec.available_budget ??
+      firstRec.security_budget ??
+      snapshot.result.optimization?.available_budget ??
+      snapshot.result.dataset_budget ??
+      null;
+    const budgetNum = rawBudget !== null && rawBudget !== undefined ? Number(rawBudget) : null;
+    const currencyStr = String(firstRec.currency || snapshot.result.dataset_currency || "INR").toUpperCase();
+    const compName = firstRec.company_name || snapshot.result.company_name || null;
+
+    return [
+      enriched,
+      `Uploaded Dataset (${(snapshot.source_files || ["dataset"]).join(", ")})`,
+      {
+        hasUploadedDataset: true,
+        datasetBudget: Number.isFinite(budgetNum) ? budgetNum : null,
+        datasetCurrency: currencyStr,
+        companyName: compName,
+      },
+    ];
   }
 
-  const assetsMap = new Map(DEMO_ASSETS.map((a) => [a.id, a]));
-  const vulnsMap = new Map(DEMO_VULNERABILITIES.map((v) => [v.id, v]));
-  const threatsMap = new Map(DEMO_THREATS.map((t) => [t.id, t]));
-
-  const invByRiskId = new Map<string, (typeof DEMO_INVESTMENTS)[0]>();
-  for (const inv of DEMO_INVESTMENTS) {
-    const nameLower = (inv.name || "").toLowerCase();
-    const descLower = (inv.description || "").toLowerCase();
-    if (
-      nameLower.includes("payment") ||
-      descLower.includes("cve-2024-21413") ||
-      inv.id.includes("rce")
-    ) {
-      invByRiskId.set("rsk_payment_rce", inv);
-    } else if (
-      nameLower.includes("database") ||
-      inv.id.includes("db") ||
-      nameLower.includes("tokenization")
-    ) {
-      invByRiskId.set("rsk_db_ransomware", inv);
-    } else if (inv.id.includes("waf") || nameLower.includes("api shield")) {
-      invByRiskId.set("rsk_admin_sqli", inv);
-    } else if (inv.id.includes("training") || nameLower.includes("phishing")) {
-      invByRiskId.set("rsk_endpoint_malware", inv);
-    }
-  }
-
-  const critScoreMap: Record<string, number> = {
-    Critical: 95.0,
-    High: 80.0,
-    Medium: 55.0,
-    Low: 25.0,
-  };
-
-  const records: Record<string, any>[] = DEMO_RISKS.map((r) => {
-    const asset = assetsMap.get(r.asset_id);
-    const vuln = vulnsMap.get(r.vulnerability_id);
-    const threat = threatsMap.get(r.threat_id);
-    const inv = invByRiskId.get(r.id);
-
-    const currentRiskVal = Number(r.residual_risk);
-    let remCost: number | null = null;
-    let expResidual: number | null = null;
-    let remName: string | null = null;
-    let remCat = "Unmapped";
-    let ealRed: number | null = null;
-    let remSource = "Missing";
-
-    if (inv) {
-      remCost = Number(inv.cost);
-      const redVal = Math.min(
-        currentRiskVal,
-        Number(inv.expected_risk_reduction)
-      );
-      expResidual = Number(Math.max(0.0, currentRiskVal - redVal).toFixed(2));
-      remName = inv.name;
-      remCat = inv.category || "Remediation";
-      ealRed =
-        inv.expected_eal_reduction !== undefined
-          ? Number(inv.expected_eal_reduction)
-          : null;
-      remSource = `Investment Catalog (${inv.id})`;
-    } else if (r.id === "rsk_cloud_leak") {
-      remCost = 650000.0;
-      const redVal = Number((currentRiskVal * 0.65).toFixed(2));
-      expResidual = Number((currentRiskVal - redVal).toFixed(2));
-      remName = "Enforce Private S3/GCS Bucket ACL Policy & IAM Role Boundary";
-      remCat = "Cloud Security Posture";
-      ealRed = Number((Number(r.eal) * 0.65).toFixed(2));
-      remSource = "Cloud Control Remediation Baseline";
-    }
-
-    return {
-      risk_id: r.id,
-      risk_name: `${vuln ? vuln.name : r.id} on ${asset ? asset.name : r.asset_id}`,
-      asset_id: r.asset_id,
-      asset_name: asset ? asset.name : r.asset_id,
-      asset_criticality: asset ? asset.criticality : "Medium",
-      business_criticality:
-        critScoreMap[asset ? asset.criticality : "Medium"] ?? 50.0,
-      internet_exposed: asset ? Boolean(asset.internet_exposed) : null,
-      exposure: asset && asset.internet_exposed ? 95.0 : 35.0,
-      vulnerability_id: r.vulnerability_id,
-      cve_id: vuln ? vuln.cve_id : null,
-      vulnerability_name: vuln ? vuln.name : r.vulnerability_id,
-      cvss_score: vuln ? Number(vuln.cvss_score) : null,
-      exploitability: vuln ? Number(vuln.exploitability_score) : null,
-      exploit_available: vuln ? Boolean(vuln.exploit_available) : null,
-      threat_id: r.threat_id,
-      threat_name: threat ? threat.name : r.threat_id,
-      threat_activity: threat ? Number(threat.activity_level) : null,
-      control_effectiveness: Number(r.control_effectiveness),
-      current_risk: currentRiskVal,
-      expected_residual_risk: expResidual,
-      remediation_cost: remCost,
-      remediation_name: remName,
-      remediation_category: remCat,
-      remediation_source: remSource,
-      eal: Number(r.eal),
-      expected_eal_reduction: ealRed,
-      risk_level: r.risk_level,
-      risk_status: r.risk_status,
-      source_type: "CRISP Enterprise Risk Register",
-    };
-  });
-
-  return [records, "CRISP Enterprise Risk Register"];
+  return [
+    [],
+    "No dataset uploaded",
+    {
+      hasUploadedDataset: false,
+      datasetBudget: null,
+      datasetCurrency: "INR",
+      companyName: null,
+    },
+  ];
 }
 
 export function runServerBudgetOptimization(

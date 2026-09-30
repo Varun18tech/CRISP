@@ -39,8 +39,12 @@ interface CurrencyOption {
 }
 
 interface OptimizerContext {
-  status: "ready" | "no_data";
+  status: "ready" | "awaiting_upload" | "no_data";
+  has_uploaded_dataset?: boolean;
   dataset_source: string;
+  dataset_budget?: number | null;
+  dataset_currency?: string;
+  company_name?: string | null;
   total_risks_available: number;
   eligible_risks_count: number;
   data_insufficient_count: number;
@@ -319,8 +323,18 @@ export default function BudgetOptimizerPage() {
     setContextLoading(true);
     setContextError(null);
     try {
-      const ctx = await api.getBudgetOptimizerContext("org_default");
+      const ctx: OptimizerContext = await api.getBudgetOptimizerContext("org_default");
       setContext(ctx);
+
+      // If dataset is uploaded with a defined budget, auto-fill input if not already set or optimized
+      if (ctx && ctx.has_uploaded_dataset) {
+        if (ctx.dataset_currency) {
+          setSelectedCurrency(ctx.dataset_currency);
+        }
+        if (ctx.dataset_budget !== null && ctx.dataset_budget !== undefined) {
+          setBudgetInputRaw((prev) => (prev.trim() === "" ? String(ctx.dataset_budget) : prev));
+        }
+      }
     } catch (err: any) {
       setContextError(err?.message || "Unable to connect to CRISP backend optimization service.");
     } finally {
@@ -446,13 +460,27 @@ export default function BudgetOptimizerPage() {
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
         onComplete={async () => {
+          setUploadModalOpen(false);
           await fetchContext();
-          // If a budget was already entered and optimized, automatically re-optimize on the new dataset (Section 49)
-          const check = validateBudgetInput(budgetInputRaw, selectedCurrency);
-          if (result && check.valid && check.numericValue !== null) {
-            await executeOptimization(check.numericValue, selectedCurrency);
-          } else {
-            setResult(null);
+          try {
+            const latestCtx: OptimizerContext = await api.getBudgetOptimizerContext("org_default");
+            setContext(latestCtx);
+            if (
+              latestCtx &&
+              latestCtx.has_uploaded_dataset &&
+              latestCtx.dataset_budget !== null &&
+              latestCtx.dataset_budget !== undefined
+            ) {
+              setBudgetInputRaw(String(latestCtx.dataset_budget));
+              if (latestCtx.dataset_currency) {
+                setSelectedCurrency(latestCtx.dataset_currency);
+              }
+              await executeOptimization(latestCtx.dataset_budget, latestCtx.dataset_currency || "INR");
+            } else {
+              setResult(null);
+            }
+          } catch {
+            // Context fetch failure handled by error state
           }
         }}
       />
@@ -662,6 +690,15 @@ export default function BudgetOptimizerPage() {
               <span className="text-slate-400">of {context.total_risks_available} risks</span>
             </div>
           )}
+          <Button
+            onClick={() => setUploadModalOpen(true)}
+            variant="outline"
+            size="sm"
+            className="border-blue-500/40 bg-blue-950/20 text-blue-300 hover:bg-blue-900/30 hover:text-blue-100 text-xs shadow-sm"
+          >
+            <Upload className="w-3.5 h-3.5 mr-1.5 text-blue-400" />
+            {context?.has_uploaded_dataset ? "Upload New Dataset" : "Upload Dataset"}
+          </Button>
         </div>
       </div>
 
@@ -682,26 +719,85 @@ export default function BudgetOptimizerPage() {
         </div>
       )}
 
-      {/* No Data / Empty State (Sections 43 & 44) */}
-      {!contextLoading && context && context.total_risks_available === 0 && (
-        <Card className="border-slate-800 bg-slate-900/50">
-          <CardContent className="p-8 text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
-              <FileWarning className="w-6 h-6" />
+      {/* Upload Required Gate — Only allow budget input after dataset upload */}
+      {!contextLoading && context && !context.has_uploaded_dataset && (
+        <Card className="border-blue-500/30 bg-gradient-to-br from-blue-950/40 via-slate-900/80 to-slate-900 shadow-xl overflow-hidden">
+          <CardContent className="p-8 text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center mx-auto text-blue-400 shadow-inner">
+              <Upload className="w-7 h-7" />
             </div>
-            <h2 className="text-lg font-semibold text-slate-100">No risk data available for optimization.</h2>
-            <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-              Insufficient data for Budget Optimization. CRISP requires eligible risk and remediation cost records before
-              a budget-constrained remediation portfolio can be calculated.
-            </p>
+            <div className="space-y-2 max-w-xl mx-auto">
+              <h2 className="text-xl font-bold text-slate-100">Upload Company Dataset to Unlock Budget Optimizer</h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                To prevent arbitrary or random budget allocations, the Budget Optimizer requires your organization&apos;s
+                uploaded risk dataset. The cybersecurity budget specified in your dataset (<code className="text-blue-300 bg-blue-950/80 px-1.5 py-0.5 rounded font-mono text-[11px]">security_budget</code> or <code className="text-blue-300 bg-blue-950/80 px-1.5 py-0.5 rounded font-mono text-[11px]">available_budget</code>)
+                will be extracted and used to calculate the highest-ROI remediation allocations without arbitrary numbers.
+              </p>
+            </div>
             <div className="pt-2">
-              <Button onClick={() => setUploadModalOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white">
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Company Risk Dataset
+              <Button
+                id="upload-dataset-gate-btn"
+                onClick={() => setUploadModalOpen(true)}
+                className="bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-2.5 rounded-xl shadow-lg shadow-blue-600/30 inline-flex items-center gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                Upload Company Dataset (CSV / JSON)
               </Button>
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Dataset Detected Budget Callout */}
+      {!contextLoading && context && context.has_uploaded_dataset && (
+        <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/30 via-slate-900/80 to-slate-900/95 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                  Dataset Security Budget Identified
+                </span>
+                {context.company_name && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                    {context.company_name}
+                  </span>
+                )}
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/30">
+                  {context.dataset_source}
+                </span>
+              </div>
+              <p className="text-sm font-medium text-slate-200 mt-1">
+                Designated Security Budget in Data:{" "}
+                <span className="text-emerald-300 font-bold text-base">
+                  {context.dataset_budget !== null && context.dataset_budget !== undefined
+                    ? formatExactCurrency(context.dataset_budget, context.dataset_currency || "INR")
+                    : "Not specified"}
+                </span>
+              </p>
+            </div>
+          </div>
+          {context.dataset_budget !== null && context.dataset_budget !== undefined && (
+            <Button
+              type="button"
+              onClick={() => {
+                setBudgetInputRaw(String(context.dataset_budget));
+                if (context.dataset_currency) {
+                  setSelectedCurrency(context.dataset_currency);
+                }
+                setValidationError(null);
+              }}
+              variant="outline"
+              size="sm"
+              className="border-emerald-500/50 bg-emerald-950/20 text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-200 shrink-0 self-start sm:self-auto font-medium"
+            >
+              <DollarSign className="w-3.5 h-3.5 mr-1" />
+              Apply Dataset Budget
+            </Button>
+          )}
+        </div>
       )}
 
       {/* SECTION 1 — FIRST SCREEN: ASK FOR THE USER'S BUDGET (Sections 2, 3, 29, 30, 45) */}
@@ -716,10 +812,16 @@ export default function BudgetOptimizerPage() {
                 What is your available cybersecurity remediation budget?
               </CardTitle>
             </div>
-            {formattedPreview && (
+            {formattedPreview && context?.has_uploaded_dataset && (
               <div className="px-3.5 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-xs font-semibold text-blue-300">
                 Budget: {formattedPreview}
               </div>
+            )}
+            {!context?.has_uploaded_dataset && (
+              <span className="px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs font-semibold text-amber-300 flex items-center gap-1.5 self-start sm:self-auto">
+                <Lock className="w-3.5 h-3.5" />
+                Upload Dataset Required
+              </span>
             )}
           </div>
         </CardHeader>
@@ -736,12 +838,16 @@ export default function BudgetOptimizerPage() {
                 </label>
                 <select
                   id="budget-currency-select"
+                  disabled={!context?.has_uploaded_dataset}
                   value={selectedCurrency}
                   onChange={(e) => {
                     setSelectedCurrency(e.target.value);
                     if (validationError) setValidationError(null);
                   }}
-                  className="w-full h-11 rounded-xl border border-slate-700/80 bg-slate-950 px-3.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
+                  className={cn(
+                    "w-full h-11 rounded-xl border bg-slate-950 px-3.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500",
+                    !context?.has_uploaded_dataset ? "opacity-50 cursor-not-allowed border-slate-800" : "border-slate-700/80"
+                  )}
                 >
                   {currencies.map((c) => (
                     <option key={c.code} value={c.code}>
@@ -767,30 +873,42 @@ export default function BudgetOptimizerPage() {
                     id="available-budget-input"
                     type="text"
                     inputMode="decimal"
+                    disabled={!context?.has_uploaded_dataset}
                     value={budgetInputRaw}
                     onChange={(e) => {
                       setBudgetInputRaw(e.target.value);
                       if (validationError) setValidationError(null);
                     }}
-                    placeholder={`Enter available budget in ${activeCurrencyMeta.code}`}
+                    placeholder={
+                      !context?.has_uploaded_dataset
+                        ? "Upload company dataset first to enter budget"
+                        : `Enter available budget in ${activeCurrencyMeta.code}`
+                    }
                     aria-invalid={Boolean(validationError)}
                     aria-describedby={validationError ? "budget-input-error" : "budget-input-help"}
                     className={cn(
                       "w-full h-11 rounded-xl border bg-slate-950 pl-9 pr-4 text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 transition-all",
-                      validationError
+                      !context?.has_uploaded_dataset
+                        ? "opacity-50 cursor-not-allowed border-slate-800"
+                        : validationError
                         ? "border-rose-500/70 focus:ring-rose-500/40"
                         : "border-slate-700/80 focus:ring-blue-500/50 focus:border-blue-500"
                     )}
                   />
                 </div>
-                {validationError ? (
+                {!context?.has_uploaded_dataset ? (
+                  <p id="budget-input-help" className="text-[11px] text-amber-400/90 mt-1.5 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 shrink-0" />
+                    <span>Upload your company risk dataset with designated security budget to enable optimization.</span>
+                  </p>
+                ) : validationError ? (
                   <p id="budget-input-error" className="text-xs text-rose-400 mt-1.5 flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                     <span>{validationError}</span>
                   </p>
                 ) : (
                   <p id="budget-input-help" className="text-[11px] text-slate-400 mt-1.5">
-                    CRISP automatically evaluates all eligible risks in the active dataset and solves for the optimal
+                    CRISP automatically evaluates all eligible risks in your uploaded dataset and solves for the optimal
                     remediation portfolio within this constraint.
                   </p>
                 )}
@@ -802,13 +920,18 @@ export default function BudgetOptimizerPage() {
                   <Button
                     id="optimize-budget-submit-btn"
                     type="submit"
-                    disabled={optimizing || (context?.total_risks_available === 0)}
-                    className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-md shadow-blue-600/20 flex items-center justify-center gap-2"
+                    disabled={optimizing || !context?.has_uploaded_dataset || (context?.total_risks_available === 0)}
+                    className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {optimizing ? (
                       <>
                         <RefreshCw className="w-4 h-4 animate-spin" />
                         <span>Optimizing...</span>
+                      </>
+                    ) : !context?.has_uploaded_dataset ? (
+                      <>
+                        <Lock className="w-4 h-4" />
+                        <span>Upload Dataset First</span>
                       </>
                     ) : result ? (
                       <>

@@ -32,15 +32,19 @@ export async function GET(req: NextRequest) {
   }
 
   // 2. Authoritative Next.js server-side context calculation
-  const [rawRisks, sourceName] = loadCrispRisksFromServer();
-  const profiled = rawRisks.map((r) => evaluateAndProfileRisk(r, "INR"));
+  const [rawRisks, sourceName, meta] = loadCrispRisksFromServer();
+  const profiled = rawRisks.map((r) => evaluateAndProfileRisk(r, meta.datasetCurrency || "INR"));
   const eligible = profiled.filter((r) => r.eligibility_status === "Eligible");
   const insufficient = profiled.filter((r) => r.eligibility_status === "Data Insufficient");
   const remediated = profiled.filter((r) => r.eligibility_status === "Already Remediated");
 
   return NextResponse.json({
-    status: rawRisks.length > 0 ? "ready" : "no_data",
+    status: meta.hasUploadedDataset ? "ready" : "awaiting_upload",
+    has_uploaded_dataset: meta.hasUploadedDataset,
     dataset_source: sourceName,
+    dataset_budget: meta.datasetBudget,
+    dataset_currency: meta.datasetCurrency,
+    company_name: meta.companyName,
     total_risks_available: profiled.length,
     eligible_risks_count: eligible.length,
     data_insufficient_count: insufficient.length,

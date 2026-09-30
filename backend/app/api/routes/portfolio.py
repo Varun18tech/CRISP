@@ -28,16 +28,47 @@ def optimize(req: PortfolioOptimizationRequest):
 
 @router.get("/budget-optimizer/context")
 def get_budget_optimizer_context(organization_id: str = "org_default", db: Session = Depends(get_db)):
-    """Return available risk dataset summary and supported currencies before user enters budget."""
-    raw_risks, source_name = load_crisp_risks_from_db(db, organization_id=organization_id)
-    profiled = [evaluate_and_profile_risk(r, display_currency="INR") for r in raw_risks]
+    """Return available risk dataset summary, detected dataset budget, and supported currencies."""
+    snapshot = db.query(AnalysisSnapshot).order_by(AnalysisSnapshot.id.desc()).first()
+    has_uploaded = False
+    dataset_budget = None
+    dataset_currency = "INR"
+    company_name = None
+    raw_risks = []
+    source_name = "No dataset uploaded"
+
+    if snapshot and isinstance(snapshot.result, dict):
+        valid_records = snapshot.result.get("valid_records")
+        if isinstance(valid_records, list) and len(valid_records) > 0:
+            has_uploaded = True
+            raw_risks = valid_records
+            source_name = f"Uploaded Dataset ({', '.join(snapshot.source_files or ['dataset'])})"
+            first_rec = valid_records[0]
+            raw_b = (
+                first_rec.get("available_budget")
+                or first_rec.get("security_budget")
+                or snapshot.result.get("optimization", {}).get("available_budget")
+            )
+            if raw_b is not None:
+                try:
+                    dataset_budget = float(str(raw_b).replace(",", "").strip())
+                except (ValueError, TypeError):
+                    dataset_budget = None
+            dataset_currency = str(first_rec.get("currency") or "INR").upper()
+            company_name = first_rec.get("company_name") or first_rec.get("organization")
+
+    profiled = [evaluate_and_profile_risk(r, display_currency=dataset_currency or "INR") for r in raw_risks]
     eligible = [r for r in profiled if r["eligibility_status"] == "Eligible"]
     insufficient = [r for r in profiled if r["eligibility_status"] == "Data Insufficient"]
     remediated = [r for r in profiled if r["eligibility_status"] == "Already Remediated"]
 
     return {
-        "status": "ready" if len(raw_risks) > 0 else "no_data",
+        "status": "ready" if has_uploaded else "awaiting_upload",
+        "has_uploaded_dataset": has_uploaded,
         "dataset_source": source_name,
+        "dataset_budget": dataset_budget,
+        "dataset_currency": dataset_currency,
+        "company_name": company_name,
         "total_risks_available": len(profiled),
         "eligible_risks_count": len(eligible),
         "data_insufficient_count": len(insufficient),
@@ -59,6 +90,12 @@ def execute_budget_optimizer(req: BudgetOptimizerRequest, db: Session = Depends(
             source_name = "Request Payload Dataset"
         else:
             raw_risks, source_name = load_crisp_risks_from_db(db, organization_id=req.organization_id)
+
+        if not raw_risks:
+            raise HTTPException(
+                status_code=400,
+                detail="No company dataset uploaded. Please upload a dataset with a defined security budget before running the budget optimizer.",
+            )
 
         res = run_budget_optimization(
             available_budget=req.available_budget,
@@ -121,9 +158,9 @@ async def upload_dataset(files: List[UploadFile] = File(...), db: Session = Depe
             errors.append({"file": file.filename, "message": str(exc)})
     if not valid:
         raise HTTPException(status_code=422, detail={"message": "no valid risk records found", "invalid_records": errors})
-    if len(budgets) != 1:
-        raise HTTPException(status_code=422, detail="available_budget must be identical across uploaded risk files")
-    optimization = optimize_portfolio(valid, budgets.pop())
+    upload_budget = budgets.pop()
+    optimization = optimize_portfolio(valid, upload_budget)
+    first_rec = valid[0] if valid else {}
     result = {
         "source_files": source_files,
         "valid_records": valid,
@@ -131,6 +168,10 @@ async def upload_dataset(files: List[UploadFile] = File(...), db: Session = Depe
         "valid_count": len(valid),
         "invalid_count": len(errors),
         "optimization": optimization,
+        "has_uploaded_dataset": True,
+        "dataset_budget": upload_budget,
+        "dataset_currency": str(first_rec.get("currency") or "INR").upper(),
+        "company_name": first_rec.get("company_name") or first_rec.get("organization"),
     }
     snapshot = AnalysisSnapshot(source_files=source_files, result=result)
     db.add(snapshot)

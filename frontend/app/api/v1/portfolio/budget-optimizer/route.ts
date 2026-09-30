@@ -60,7 +60,15 @@ export async function POST(req: NextRequest) {
       rawRisks = body.risks;
       sourceName = "Request Payload Dataset";
     } else {
-      [rawRisks, sourceName] = loadCrispRisksFromServer();
+      const [risks, src, meta] = loadCrispRisksFromServer();
+      rawRisks = risks;
+      sourceName = src;
+      if (!meta.hasUploadedDataset || rawRisks.length === 0) {
+        return NextResponse.json(
+          { detail: "No company dataset uploaded. Please upload a dataset with a defined security budget before running the budget optimizer." },
+          { status: 400 }
+        );
+      }
     }
 
     const result = runServerBudgetOptimization(
