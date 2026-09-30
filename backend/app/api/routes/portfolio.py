@@ -97,6 +97,20 @@ def execute_budget_optimizer(req: BudgetOptimizerRequest, db: Session = Depends(
                 detail="No company dataset uploaded. Please upload a dataset with a defined security budget before running the budget optimizer.",
             )
 
+        snapshot = db.query(AnalysisSnapshot).order_by(AnalysisSnapshot.id.desc()).first()
+        if snapshot and isinstance(snapshot.result, dict):
+            expected_budget = snapshot.result.get("dataset_budget")
+            if expected_budget is not None:
+                try:
+                    exp_b = float(expected_budget)
+                    if abs(float(req.available_budget) - exp_b) > 0.01:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Budget mismatch: Entered budget ({req.available_budget}) does not match the Available Budget in Dashboard/Dataset ({exp_b}).",
+                        )
+                except (ValueError, TypeError):
+                    pass
+
         res = run_budget_optimization(
             available_budget=req.available_budget,
             currency=req.currency,

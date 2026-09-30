@@ -18,6 +18,8 @@ type PortfolioRisk = {
 type Analysis = {
   valid_count?: number;
   valid_records?: any[];
+  dataset_budget?: number;
+  dataset_currency?: string;
   optimization?: {
     available_budget: number;
     recommended_total_investment?: number;
@@ -258,7 +260,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <AllocationCard
           label="Available Budget"
-          value={result ? money(result.available_budget) : "—"}
+          value={result || analysis?.dataset_budget ? money(availBudget) : "—"}
           detail="From uploaded dataset"
           tone="blue"
         />

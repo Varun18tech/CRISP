@@ -271,10 +271,72 @@ export default function BudgetOptimizerPage() {
           error: `Unsupported currency '${currencyCode}'.`,
         };
       }
+
+      // Enforce strict match with Available Budget from uploaded dataset / Dashboard
+      if (
+        context?.has_uploaded_dataset &&
+        context.dataset_budget !== null &&
+        context.dataset_budget !== undefined
+      ) {
+        const expectedBudget = Number(context.dataset_budget);
+        const expectedCurrency = context.dataset_currency || "INR";
+        if (currencyCode !== expectedCurrency) {
+          return {
+            valid: false,
+            numericValue: null,
+            error: `Currency Mismatch: Selected currency (${currencyCode}) must match the Available Budget currency in Dashboard (${expectedCurrency}).`,
+          };
+        }
+        if (Math.abs(parsed - expectedBudget) > 0.001) {
+          return {
+            valid: false,
+            numericValue: null,
+            error: `Budget Mismatch: Entered budget (${formatExactCurrency(parsed, currencyCode)}) does not match the Available Budget in Dashboard (${formatExactCurrency(expectedBudget, expectedCurrency)}).`,
+          };
+        }
+      }
+
       return { valid: true, numericValue: parsed, error: null };
     },
-    [currencies]
+    [currencies, context]
   );
+
+  // Live detection of mismatch with dashboard available budget
+  const liveBudgetMismatch = useMemo(() => {
+    if (!context?.has_uploaded_dataset || context.dataset_budget === null || context.dataset_budget === undefined) {
+      return null;
+    }
+    const trimmed = budgetInputRaw.trim();
+    if (!trimmed) return null;
+    const cleaned = trimmed.replace(/,/g, "").replace(/\s+/g, "");
+    if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return null;
+    const num = Number(cleaned);
+    if (!Number.isFinite(num)) return null;
+    const expectedBudget = Number(context.dataset_budget);
+    const expectedCurrency = context.dataset_currency || "INR";
+    if (selectedCurrency !== expectedCurrency) {
+      return `Currency Mismatch: Currency (${selectedCurrency}) does not match the Dashboard dataset currency (${expectedCurrency}).`;
+    }
+    if (Math.abs(num - expectedBudget) > 0.001) {
+      return `Budget Mismatch: Entered budget (${formatExactCurrency(num, selectedCurrency)}) does not match the Available Budget in Dashboard (${formatExactCurrency(expectedBudget, expectedCurrency)}).`;
+    }
+    return null;
+  }, [context, budgetInputRaw, selectedCurrency]);
+
+  const isBudgetMatchingDashboard = useMemo(() => {
+    if (!context?.has_uploaded_dataset || context.dataset_budget === null || context.dataset_budget === undefined) {
+      return false;
+    }
+    const trimmed = budgetInputRaw.trim();
+    if (!trimmed) return false;
+    const cleaned = trimmed.replace(/,/g, "").replace(/\s+/g, "");
+    const num = Number(cleaned);
+    if (!Number.isFinite(num)) return false;
+    const expectedBudget = Number(context.dataset_budget);
+    const expectedCurrency = context.dataset_currency || "INR";
+    return Math.abs(num - expectedBudget) < 0.001 && selectedCurrency === expectedCurrency;
+  }, [context, budgetInputRaw, selectedCurrency]);
+
 
   // Live formatted preview of the entered budget
   const formattedPreview = useMemo(() => {
@@ -884,14 +946,18 @@ export default function BudgetOptimizerPage() {
                         ? "Upload company dataset first to enter budget"
                         : `Enter available budget in ${activeCurrencyMeta.code}`
                     }
-                    aria-invalid={Boolean(validationError)}
-                    aria-describedby={validationError ? "budget-input-error" : "budget-input-help"}
+                    aria-invalid={Boolean(validationError || liveBudgetMismatch)}
+                    aria-describedby={
+                      validationError || liveBudgetMismatch ? "budget-input-error" : "budget-input-help"
+                    }
                     className={cn(
                       "w-full h-11 rounded-xl border bg-slate-950 pl-9 pr-4 text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 transition-all",
                       !context?.has_uploaded_dataset
                         ? "opacity-50 cursor-not-allowed border-slate-800"
-                        : validationError
-                        ? "border-rose-500/70 focus:ring-rose-500/40"
+                        : validationError || liveBudgetMismatch
+                        ? "border-rose-500/70 focus:ring-rose-500/40 bg-rose-950/10 text-rose-100"
+                        : isBudgetMatchingDashboard
+                        ? "border-emerald-500/60 focus:ring-emerald-500/40"
                         : "border-slate-700/80 focus:ring-blue-500/50 focus:border-blue-500"
                     )}
                   />
@@ -901,10 +967,34 @@ export default function BudgetOptimizerPage() {
                     <Lock className="w-3.5 h-3.5 shrink-0" />
                     <span>Upload your company risk dataset with designated security budget to enable optimization.</span>
                   </p>
-                ) : validationError ? (
-                  <p id="budget-input-error" className="text-xs text-rose-400 mt-1.5 flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{validationError}</span>
+                ) : validationError || liveBudgetMismatch ? (
+                  <div className="space-y-1.5 mt-2 p-2.5 rounded-lg border border-rose-500/30 bg-rose-950/25">
+                    <p id="budget-input-error" className="text-xs text-rose-300 flex items-start gap-1.5 font-medium leading-relaxed">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                      <span>{validationError || liveBudgetMismatch}</span>
+                    </p>
+                    {context?.dataset_budget !== null && context?.dataset_budget !== undefined && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => {
+                          setBudgetInputRaw(String(context.dataset_budget));
+                          if (context.dataset_currency) {
+                            setSelectedCurrency(context.dataset_currency);
+                          }
+                          setValidationError(null);
+                        }}
+                        className="h-7 text-[11px] font-semibold bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/40 rounded-lg px-2.5 flex items-center gap-1.5 mt-1"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Match Dashboard Budget ({formatExactCurrency(context.dataset_budget, context.dataset_currency || "INR")})</span>
+                      </Button>
+                    )}
+                  </div>
+                ) : isBudgetMatchingDashboard ? (
+                  <p className="text-[11px] text-emerald-400 font-medium mt-1.5 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                    <span>Matches Available Budget in Dashboard ({formatExactCurrency(context?.dataset_budget, context?.dataset_currency || "INR")})</span>
                   </p>
                 ) : (
                   <p id="budget-input-help" className="text-[11px] text-slate-400 mt-1.5">
@@ -920,7 +1010,12 @@ export default function BudgetOptimizerPage() {
                   <Button
                     id="optimize-budget-submit-btn"
                     type="submit"
-                    disabled={optimizing || !context?.has_uploaded_dataset || (context?.total_risks_available === 0)}
+                    disabled={
+                      optimizing ||
+                      !context?.has_uploaded_dataset ||
+                      Boolean(validationError || liveBudgetMismatch) ||
+                      (context?.total_risks_available === 0)
+                    }
                     className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {optimizing ? (
@@ -932,6 +1027,11 @@ export default function BudgetOptimizerPage() {
                       <>
                         <Lock className="w-4 h-4" />
                         <span>Upload Dataset First</span>
+                      </>
+                    ) : (validationError || liveBudgetMismatch) ? (
+                      <>
+                        <AlertTriangle className="w-4 h-4 text-rose-300" />
+                        <span>Budget Mismatch</span>
                       </>
                     ) : result ? (
                       <>

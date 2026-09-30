@@ -69,6 +69,16 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+      if (meta.datasetBudget !== null && meta.datasetBudget !== undefined) {
+        if (Math.abs(Number(availableBudget) - Number(meta.datasetBudget)) > 0.01) {
+          return NextResponse.json(
+            {
+              detail: `Budget mismatch: Entered budget (${Number(availableBudget)}) does not match the Available Budget in Dashboard/Dataset (${meta.datasetBudget}).`,
+            },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     const result = runServerBudgetOptimization(
