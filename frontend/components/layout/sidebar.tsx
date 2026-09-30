@@ -55,7 +55,6 @@ const navigation: NavSection[] = [
     title: "Decision Support",
     items: [
       { title: "Budget Optimizer", href: "/budget-optimizer", icon: Calculator },
-      { title: "Executive AI Advisor", href: "/ai-advisor", icon: Sparkles, badge: "Claude 3.5" },
       { title: "Investments", href: "/investments", icon: DollarSign },
       { title: "Data Quality", href: "/data-quality", icon: ClipboardCheck },
     ],
